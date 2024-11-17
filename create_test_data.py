@@ -3,6 +3,7 @@ import json
 import random
 import argparse
 import os
+from scipy.spatial import ConvexHull
 
 
 def parse_arguments():
@@ -50,10 +51,14 @@ def create_test_json(video_path, output_json_path, mask_groups=2):
                 y = random.randint(0, height)
                 vertices.append([x, y])
 
+            hull = ConvexHull(vertices)
+
+            # 凸包の頂点を取得
+            hull_vertices = [vertices[vertex] for vertex in hull.vertices]
             # マスク情報
             mask = {
                 "frame": frame_idx,
-                "vertices": vertices
+                "vertices": hull_vertices
             }
             mask_group.append(mask)
 
