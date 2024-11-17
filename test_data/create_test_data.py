@@ -41,9 +41,11 @@ def create_test_json(video_path, output_json_path, mask_groups=2):
 
     # マスクグループを生成
     for _ in range(mask_groups):
-        mask_group = []
+        vertices_list = []
+        begin_frame = random.randint(0, total_frames - 1)
+        end_frame = random.randint(begin_frame, total_frames)
 
-        for frame_idx in range(total_frames):
+        for _ in range(begin_frame, end_frame + 1):
             vertices = []
             num_vertices = random.randint(3, 10)
             for _ in range(num_vertices):
@@ -55,15 +57,16 @@ def create_test_json(video_path, output_json_path, mask_groups=2):
 
             # 凸包の頂点を取得
             hull_vertices = [vertices[vertex] for vertex in hull.vertices]
-            # マスク情報
-            mask = {
-                "frame": frame_idx,
-                "vertices": hull_vertices
-            }
-            mask_group.append(mask)
+            vertices_list.append(hull_vertices)
+
+        mask = {
+            "begin_frame": begin_frame,
+            "end_frame": end_frame,
+            "vertices": vertices_list
+        }
 
         # マスクグループを追加
-        json_data["masks"].append(mask_group)
+        json_data["masks"].append(mask)
 
     # 動画を閉じる
     cap.release()

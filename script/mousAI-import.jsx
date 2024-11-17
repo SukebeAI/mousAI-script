@@ -59,6 +59,22 @@
 
     // マスクを適用
     function applyMasksToLayer(comp, jsonData) {
+        function createMask(maskLayer, frame, vertices, frameDuration) {
+            var time = frame * frameDuration;
+
+            var maskShape = new Shape();
+            if (!maskShape) {
+                throw new Error("Shape オブジェクトの作成に失敗しました");
+            }
+            maskShape.vertices = vertices || [[0, 0]];
+            maskShape.closed = true;
+
+            var maskPath = maskLayer.property("Mask Path");
+            if (!maskPath) {
+                throw new Error("Mask Path プロパティが取得できません");
+            }
+            maskPath.setValueAtTime(time, maskShape);
+        }
         var adjustmentLayer = comp.layers.addSolid([1, 1, 1], "Mosaic Adjustment", comp.width, comp.height, comp.pixelAspect, comp.duration);
         adjustmentLayer.adjustmentLayer = true;
 
@@ -66,41 +82,32 @@
 
         // 配列でマスクを管理する
         for (var maskIndex = 0; maskIndex < jsonData.masks.length; maskIndex++) {
-            var maskFrames = jsonData.masks[maskIndex];
+            var mask = jsonData.masks[maskIndex];
 
-            var mask = adjustmentLayer.Masks.addProperty("Mask");
-            if (!mask) {
+            var maskLayer = adjustmentLayer.Masks.addProperty("Mask");
+            if (!maskLayer) {
                 throw new Error("マスクの追加に失敗しました");
             }
-            mask.maskMode = MaskMode.ADD;
+            maskLayer.maskMode = MaskMode.ADD;
 
+            if (mask.begin_frame > 0) {
+                createMask(maskLayer, mask.begin_frame - 1, null, comp.frameDuration);
+            }
 
             // フレームごとのマスクデータを設定
-            for (var i = 0; i < maskFrames.length; i++) {
-                var frameData = maskFrames[i];
-                var time = comp.frameDuration * frameData.frame;
-
-                var maskShape = new Shape();
-                if (!maskShape) {
-                    throw new Error("Shape オブジェクトの作成に失敗しました");
-                }
+            for (var i = mask.begin_frame; i <= mask.end_frame; i++) {
                 var vertices = [];
-                for (var k = 0; k < frameData.vertices.length; k++) {
-                    var vertex = frameData.vertices[k];
+                for (var k = 0; k < mask.vertices[i - mask.begin_frame].length; k++) {
+                    var vertex = mask.vertices[i - mask.begin_frame][k];
                     vertices.push([vertex[0], vertex[1]]);
                 }
-
-                maskShape.vertices = vertices;
-                maskShape.closed = true;
-
-                var maskPath = mask.property("Mask Path");
-                if (!maskPath) {
-                    throw new Error("Mask Path プロパティが取得できません");
-                }
-
-                maskPath.setValueAtTime(time, maskShape);
+                createMask(maskLayer, i, vertices, comp.frameDuration);
             }
+
+            // 終了フレームの次のフレームのマスクを設定
+            createMask(maskLayer, mask.end_frame + 1, null, comp.frameDuration);
         }
+
     }
 
     // メインスクリプト
