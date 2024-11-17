@@ -64,26 +64,41 @@
 
         addMosaicEffect(adjustmentLayer);
 
-        var mask = adjustmentLayer.Masks.addProperty("Mask");
-        mask.maskMode = MaskMode.ADD;
+        // 配列でマスクを管理する
+        for (var maskIndex = 0; maskIndex < jsonData.masks.length; maskIndex++) {
+            var maskFrames = jsonData.masks[maskIndex];
 
-        for (var i = 0; i < jsonData.frames.length; i++) {
-            var frameData = jsonData.frames[i];
-            var time = comp.frameDuration * frameData.frame;
+            var mask = adjustmentLayer.Masks.addProperty("Mask");
+            if (!mask) {
+                throw new Error("マスクの追加に失敗しました");
+            }
+            mask.maskMode = MaskMode.ADD;
 
-            for (var j = 0; j < frameData.masks.length; j++) {
-                var maskData = frameData.masks[j];
+
+            // フレームごとのマスクデータを設定
+            for (var i = 0; i < maskFrames.length; i++) {
+                var frameData = maskFrames[i];
+                var time = comp.frameDuration * frameData.frame;
 
                 var maskShape = new Shape();
+                if (!maskShape) {
+                    throw new Error("Shape オブジェクトの作成に失敗しました");
+                }
                 var vertices = [];
-                for (var k = 0; k < maskData.vertices.length; k++) {
-                    var vertex = maskData.vertices[k];
+                for (var k = 0; k < frameData.vertices.length; k++) {
+                    var vertex = frameData.vertices[k];
                     vertices.push([vertex[0], vertex[1]]);
                 }
 
                 maskShape.vertices = vertices;
                 maskShape.closed = true;
-                mask.property("Mask Path").setValueAtTime(time, maskShape);
+
+                var maskPath = mask.property("Mask Path");
+                if (!maskPath) {
+                    throw new Error("Mask Path プロパティが取得できません");
+                }
+
+                maskPath.setValueAtTime(time, maskShape);
             }
         }
     }
