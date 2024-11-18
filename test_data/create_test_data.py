@@ -13,6 +13,10 @@ def parse_arguments():
                         help='Input directory containing images.')
     parser.add_argument('--version', type=str, default='1.0',
                         help='JSON format version.')
+    parser.add_argument('--windows_base', type=str, default=r"C:\Users\tomoki\workspace",
+                        help='Windows baase path.')
+    parser.add_argument('--wsl_base', type=str, default="/workspaces",
+                        help='WSL base path.')
 
     return parser.parse_args()
 
@@ -29,26 +33,32 @@ def create_test_json(video_path, output_json_path, mask_groups=2):
 
     # 動画の情報を取得
     total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+    fps = cap.get(cv2.CAP_PROP_FPS)
+    total_duration = total_frames / fps  # 動画の総時間（秒）
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
 
+    relative_path = absolute_video_path[len(args.wsl_base):]
+    windows_path = args.windows_base + \
+        relative_path.replace('/', '\\')  # Replace "/" with "\\"
     # JSONデータの雛形
     json_data = {
         "version": "1.0",
-        "videoPath": absolute_video_path,
+        "videoPath": windows_path,
         "masks": []
     }
 
     # マスクグループを生成
     for _ in range(mask_groups):
-        vertices_list = []
-        begin_frame = random.randint(0, total_frames - 1)
-        end_frame = random.randint(begin_frame, total_frames)
+        masks_list = []
+        begin_time = 0.0
+        while begin_time < total_duration:
+            end_time = min(begin_time + random.randint(1, 10),
+                           total_duration)
 
-        for _ in range(begin_frame, end_frame + 1):
+            # ランダムな頂点を生成
             vertices = []
-            num_vertices = random.randint(3, 10)
-            for _ in range(num_vertices):
+            for _ in range(random.randint(3, 10)):
                 x = random.randint(0, width)
                 y = random.randint(0, height)
                 vertices.append([x, y])
@@ -57,16 +67,15 @@ def create_test_json(video_path, output_json_path, mask_groups=2):
 
             # 凸包の頂点を取得
             hull_vertices = [vertices[vertex] for vertex in hull.vertices]
-            vertices_list.append(hull_vertices)
+            mask = {
+                "begin": round(begin_time, 2),
+                "end": round(end_time, 2),
+                "vertice": hull_vertices
+            }
 
-        mask = {
-            "begin_frame": begin_frame,
-            "end_frame": end_frame,
-            "vertices": vertices_list
-        }
-
-        # マスクグループを追加
-        json_data["masks"].append(mask)
+            masks_list.append(mask)
+            begin_time = end_time + random.randint(0, 2)
+        json_data["masks"].append(masks_list)
 
     # 動画を閉じる
     cap.release()
@@ -83,5 +92,5 @@ if __name__ == '__main__':
 
     # 実行例
     video_path = args.input  # 入力動画ファイルパス
-    output_json_path = "output.json"       # 出力JSONファイルパス
+    output_json_path = args.input.replace("mp4", "json")       # 出力JSONファイルパス
     create_test_json(video_path, output_json_path)

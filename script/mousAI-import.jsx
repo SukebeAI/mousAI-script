@@ -59,9 +59,7 @@
 
     // マスクを適用
     function applyMasksToLayer(comp, jsonData) {
-        function createMask(maskLayer, frame, vertices, frameDuration) {
-            var time = frame * frameDuration;
-
+        function createMask(maskLayer, time, vertices) {
             var maskShape = new Shape();
             if (!maskShape) {
                 throw new Error("Shape オブジェクトの作成に失敗しました");
@@ -89,23 +87,21 @@
                 throw new Error("マスクの追加に失敗しました");
             }
             maskLayer.maskMode = MaskMode.ADD;
-
-            if (mask.begin_frame > 0) {
-                createMask(maskLayer, mask.begin_frame - 1, null, comp.frameDuration);
+            maskOpacity = maskLayer.property("Mask Opacity");
+            if (!maskOpacity) {
+                throw new Error("Mask Opacity プロパティが取得できません");
             }
-
-            // フレームごとのマスクデータを設定
-            for (var i = mask.begin_frame; i <= mask.end_frame; i++) {
-                var vertices = [];
-                for (var k = 0; k < mask.vertices[i - mask.begin_frame].length; k++) {
-                    var vertex = mask.vertices[i - mask.begin_frame][k];
-                    vertices.push([vertex[0], vertex[1]]);
+            for (var polygonIndex = 0; polygonIndex < mask.length; polygonIndex++) {
+                var polygon = mask[polygonIndex];
+                if (polygon.begin - comp.frameDuration >= 0) {
+                    maskOpacity.setValueAtTime(polygon.begin - comp.frameDuration, 0);
                 }
-                createMask(maskLayer, i, vertices, comp.frameDuration);
+                maskOpacity.setValueAtTime(polygon.begin, 100);
+                createMask(maskLayer, polygon.begin, polygon.vertice);
+                createMask(maskLayer, polygon.end, polygon.vertice);
+                maskOpacity.setValueAtTime(polygon.end, 100);
+                maskOpacity.setValueAtTime(polygon.end + comp.frameDuration, 0);
             }
-
-            // 終了フレームの次のフレームのマスクを設定
-            createMask(maskLayer, mask.end_frame + 1, null, comp.frameDuration);
         }
 
     }
