@@ -72,6 +72,7 @@
                 throw new Error("Mask Path プロパティが取得できません");
             }
             maskPath.setValueAtTime(time, maskShape);
+            maskPath.setInterpolationTypeAtKey(maskPath.numKeys, KeyframeInterpolationType.HOLD, KeyframeInterpolationType.HOLD);
         }
         var adjustmentLayer = comp.layers.addSolid([1, 1, 1], "Mosaic Adjustment", comp.width, comp.height, comp.pixelAspect, comp.duration);
         adjustmentLayer.adjustmentLayer = true;
@@ -87,20 +88,11 @@
                 throw new Error("マスクの追加に失敗しました");
             }
             maskLayer.maskMode = MaskMode.ADD;
-            maskOpacity = maskLayer.property("Mask Opacity");
-            if (!maskOpacity) {
-                throw new Error("Mask Opacity プロパティが取得できません");
-            }
+            createMask(maskLayer, 0, [[0, 0]]);
             for (var polygonIndex = 0; polygonIndex < mask.length; polygonIndex++) {
                 var polygon = mask[polygonIndex];
-                if (polygon.begin - comp.frameDuration >= 0) {
-                    maskOpacity.setValueAtTime(polygon.begin - comp.frameDuration, 0);
-                }
-                maskOpacity.setValueAtTime(polygon.begin, 100);
                 createMask(maskLayer, polygon.begin, polygon.vertice);
-                createMask(maskLayer, polygon.end, polygon.vertice);
-                maskOpacity.setValueAtTime(polygon.end, 100);
-                maskOpacity.setValueAtTime(polygon.end + comp.frameDuration, 0);
+                createMask(maskLayer, polygon.end, [[0, 0]]);
             }
         }
 
